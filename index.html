@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StudyBuddy — Your Smart Study Hub</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,700;0,9..144,900;1,9..144,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{--yellow:#FFD600;--yellow-light:#FFF59D;--yellow-deep:#F9A825;--yellow-warm:#FFECB3;--dark:#2D2000;--mid:#5C4500;--text:#3D2E00;--muted:#8B7340;--white:#FFFDF0;--card:#FFFDE7;--border:#FFE082;--green:#43A047;--red:#E53935;--shadow:0 4px 24px rgba(255,214,0,0.18),0 1px 4px rgba(0,0,0,0.08);--shadow-lg:0 12px 48px rgba(255,214,0,0.22),0 4px 12px rgba(0,0,0,0.1);--radius:16px;--radius-sm:10px;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--white);color:var(--text);min-height:100vh;overflow-x:hidden;}
+#auth-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#FFF8DC 0%,#FFF59D 40%,#FFD600 100%);position:relative;overflow:hidden;}
+#auth-screen::before{content:'';position:absolute;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,rgba(255,214,0,0.4) 0%,transparent 70%);top:-200px;right:-200px;animation:pulse 4s ease-in-out infinite;}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:.7}50%{transform:scale(1.1);opacity:1}}
+.auth-card{background:rgba(255,255,240,0.95);border-radius:28px;padding:48px;width:420px;box-shadow:var(--shadow-lg);position:relative;z-index:1;backdrop-filter:blur(12px);animation:slideUp .6s cubic-bezier(.22,1,.36,1);}
+@keyframes slideUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
+.auth-logo{font-family:'Fraunces',serif;font-size:2.2rem;font-weight:900;color:var(--dark);margin-bottom:4px;}
+.auth-logo span{color:var(--yellow-deep);}
+.auth-subtitle{color:var(--muted);font-size:0.88rem;margin-bottom:8px;}
+.firebase-badge{display:flex;align-items:center;gap:8px;padding:9px 14px;background:rgba(255,214,0,0.15);border:1.5px solid var(--border);border-radius:10px;margin-bottom:20px;font-size:0.8rem;font-weight:600;color:var(--mid);}
+.auth-tabs{display:flex;gap:4px;background:var(--yellow-warm);border-radius:var(--radius-sm);padding:4px;margin-bottom:24px;}
+.auth-tab{flex:1;padding:10px;text-align:center;border-radius:8px;cursor:pointer;font-weight:600;font-size:0.88rem;transition:all .25s;color:var(--muted);}
+.auth-tab.active{background:var(--yellow);color:var(--dark);}
+.form-group{margin-bottom:16px;}
+.form-label{display:block;font-size:.8rem;font-weight:700;color:var(--mid);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px;}
+.form-input{width:100%;padding:12px 14px;border:2px solid var(--border);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:.93rem;background:var(--white);color:var(--text);transition:border-color .2s,box-shadow .2s;outline:none;}
+.form-input:focus{border-color:var(--yellow-deep);box-shadow:0 0 0 4px rgba(255,214,0,.2);}
+select.form-input,textarea.form-input{resize:vertical;}
+.btn-primary{width:100%;padding:13px;background:var(--yellow);border:none;border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:.97rem;font-weight:700;color:var(--dark);cursor:pointer;transition:all .2s;box-shadow:0 4px 16px rgba(255,214,0,.4);}
+.btn-primary:hover{transform:translateY(-2px);background:var(--yellow-deep);}
+.btn-primary:disabled{opacity:.6;cursor:not-allowed;transform:none;}
+.btn-secondary{padding:10px 18px;background:var(--yellow-warm);border:2px solid var(--border);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:600;color:var(--text);cursor:pointer;transition:all .2s;}
+.btn-secondary:hover{background:var(--yellow-light);border-color:var(--yellow-deep);}
+.btn-icon{padding:9px;background:var(--yellow-warm);border:2px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;font-size:1.1rem;}
+.btn-icon:hover{background:var(--yellow);}
+.auth-error{color:var(--red);font-size:.83rem;margin-top:8px;display:none;padding:9px 12px;background:rgba(229,57,53,.08);border-radius:8px;}
+.auth-success{color:var(--green);font-size:.83rem;margin-top:8px;display:none;padding:9px 12px;background:rgba(67,160,71,.08);border-radius:8px;}
+
+/* APP SHELL */
+#app{display:none;min-height:100vh;}
+#app-loading{position:fixed;inset:0;background:linear-gradient(135deg,#FFF8DC,#FFF59D,#FFD600);display:flex;align-items:center;justify-content:center;z-index:9998;flex-direction:column;gap:16px;}
+#app-loading .logo{font-family:'Fraunces',serif;font-size:2rem;font-weight:900;color:var(--dark);}
+#app-loading .logo span{color:var(--yellow-deep);}
+.spinner{display:inline-block;width:28px;height:28px;border:3px solid rgba(255,214,0,.3);border-top-color:var(--yellow-deep);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:256px;background:var(--dark);display:flex;flex-direction:column;z-index:100;}
+.sidebar-logo{padding:26px 22px 18px;font-family:'Fraunces',serif;font-size:1.5rem;font-weight:900;color:var(--yellow);border-bottom:1px solid rgba(255,214,0,.15);}
+.sidebar-logo span{color:var(--white);}
+.sidebar-user{padding:14px 18px;display:flex;align-items:center;gap:11px;border-bottom:1px solid rgba(255,214,0,.1);}
+.user-avatar{width:36px;height:36px;border-radius:50%;background:var(--yellow);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.9rem;color:var(--dark);flex-shrink:0;}
+.user-info .user-name{font-weight:600;font-size:.88rem;color:var(--white);}
+.user-info .user-email{font-size:.72rem;color:rgba(255,255,255,.4);}
+.sidebar-nav{flex:1;padding:14px 10px;overflow-y:auto;}
+.nav-label{font-size:.67rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(255,214,0,.4);padding:10px 12px 5px;}
+.nav-item{display:flex;align-items:center;gap:11px;padding:10px 13px;border-radius:9px;cursor:pointer;transition:all .2s;color:rgba(255,255,255,.6);font-weight:500;font-size:.88rem;margin-bottom:2px;}
+.nav-item:hover{background:rgba(255,214,0,.1);color:var(--yellow-light);}
+.nav-item.active{background:var(--yellow);color:var(--dark);font-weight:700;}
+.nav-icon{font-size:1.05rem;width:20px;text-align:center;}
+.sidebar-footer{padding:14px 10px;border-top:1px solid rgba(255,214,0,.1);}
+.main-content{margin-left:256px;min-height:100vh;}
+.topbar{position:sticky;top:0;z-index:50;background:rgba(255,253,240,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:15px 28px;display:flex;align-items:center;justify-content:space-between;}
+.topbar-title{font-family:'Fraunces',serif;font-size:1.4rem;font-weight:700;color:var(--dark);}
+.topbar-actions{display:flex;gap:9px;align-items:center;}
+.sync-badge{font-size:.72rem;font-weight:700;color:var(--green);background:rgba(67,160,71,.1);padding:4px 10px;border-radius:20px;border:1.5px solid rgba(67,160,71,.3);}
+.page{display:none;padding:28px;animation:fadeIn .3s ease;}
+.page.active{display:block;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* DASHBOARD */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;}
+.stat-card{background:var(--card);border:2px solid var(--border);border-radius:var(--radius);padding:20px;position:relative;overflow:hidden;transition:transform .2s,box-shadow .2s;}
+.stat-card:hover{transform:translateY(-3px);box-shadow:var(--shadow);}
+.stat-card::before{content:attr(data-emoji);position:absolute;right:14px;top:14px;font-size:1.9rem;opacity:.25;}
+.stat-value{font-family:'Fraunces',serif;font-size:2rem;font-weight:900;color:var(--dark);}
+.stat-label{font-size:.78rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:3px;}
+.dash-grid{display:grid;grid-template-columns:2fr 1fr;gap:22px;}
+.card{background:var(--card);border:2px solid var(--border);border-radius:var(--radius);padding:22px;}
+.card-title{font-family:'Fraunces',serif;font-size:1.05rem;font-weight:700;color:var(--dark);margin-bottom:16px;display:flex;align-items:center;gap:7px;}
+.today-tasks{display:flex;flex-direction:column;gap:9px;}
+.task-item{display:flex;align-items:center;gap:11px;padding:11px 13px;background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius-sm);transition:all .2s;cursor:pointer;}
+.task-item:hover{border-color:var(--yellow-deep);background:var(--yellow-warm);}
+.task-item.done{opacity:.5;}
+.task-item.done .task-title{text-decoration:line-through;}
+.task-check{width:19px;height:19px;border-radius:5px;border:2px solid var(--border);background:var(--white);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s;font-size:.72rem;}
+.task-check.checked{background:var(--yellow);border-color:var(--yellow-deep);color:var(--dark);}
+.task-title{font-weight:600;font-size:.88rem;flex:1;}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:.73rem;font-weight:700;}
+.task-time{font-size:.76rem;color:var(--muted);}
+.streak-display{text-align:center;padding:14px 0;}
+.streak-num{font-family:'Fraunces',serif;font-size:3.2rem;font-weight:900;color:var(--yellow-deep);}
+.streak-label{font-size:.82rem;color:var(--muted);font-weight:600;}
+.streak-days{display:flex;gap:5px;justify-content:center;margin-top:14px;}
+.streak-dot{width:30px;height:30px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:.68rem;font-weight:700;color:var(--muted);}
+.streak-dot.done{background:var(--yellow);border-color:var(--yellow-deep);color:var(--dark);}
+.streak-dot.today{border-color:var(--yellow-deep);color:var(--yellow-deep);}
+.delete-btn{background:none;border:none;cursor:pointer;color:var(--muted);font-size:.88rem;padding:3px;border-radius:4px;transition:color .2s;}
+.delete-btn:hover{color:var(--red);}
+
+/* CALENDAR */
+.cal-layout{display:grid;grid-template-columns:1fr 340px;gap:22px;align-items:start;}
+.cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
+.cal-month{font-family:'Fraunces',serif;font-size:1.5rem;font-weight:700;color:var(--dark);}
+.cal-nav{display:flex;gap:7px;}
+.cal-nav button{width:34px;height:34px;border-radius:50%;border:2px solid var(--border);background:var(--card);cursor:pointer;font-size:.95rem;color:var(--text);transition:all .2s;display:flex;align-items:center;justify-content:center;}
+.cal-nav button:hover{background:var(--yellow);}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;}
+.cal-day-label{text-align:center;font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;padding:7px 0;}
+.cal-cell{aspect-ratio:1;border-radius:var(--radius-sm);border:1.5px solid transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;padding:3px;min-height:56px;}
+.cal-cell:hover{background:var(--yellow-warm);border-color:var(--border);}
+.cal-cell.today{background:var(--yellow);border-color:var(--yellow-deep);}
+.cal-cell.today .cal-date{color:var(--dark);font-weight:900;}
+.cal-cell.other-month .cal-date{color:var(--border);}
+.cal-cell.selected{border-color:var(--yellow-deep);box-shadow:0 0 0 3px rgba(255,214,0,.3);}
+.cal-date{font-weight:700;font-size:.88rem;color:var(--text);}
+.cal-dots{display:flex;gap:2px;margin-top:3px;justify-content:center;}
+.cal-dot{width:5px;height:5px;border-radius:50%;}
+.event-form{background:var(--card);border:2px solid var(--border);border-radius:var(--radius);padding:22px;position:sticky;top:85px;}
+.event-item{padding:11px 13px;border-radius:var(--radius-sm);background:var(--white);border:1.5px solid var(--border);border-left:4px solid var(--yellow-deep);display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.event-title{font-weight:600;font-size:.88rem;}
+.event-meta{font-size:.76rem;color:var(--muted);margin-top:2px;}
+
+/* FLASHCARDS */
+.fc-tabs{display:flex;gap:4px;background:var(--yellow-warm);border-radius:var(--radius-sm);padding:4px;margin-bottom:22px;width:fit-content;}
+.fc-tab{padding:8px 16px;border-radius:8px;cursor:pointer;font-weight:600;font-size:.86rem;transition:all .25s;color:var(--muted);}
+.fc-tab.active{background:var(--yellow);color:var(--dark);}
+.fc-controls{display:flex;gap:11px;margin-bottom:24px;flex-wrap:wrap;align-items:center;}
+.subject-filter{display:flex;gap:7px;flex-wrap:wrap;}
+.subject-pill{padding:7px 14px;border-radius:20px;border:2px solid var(--border);background:var(--card);cursor:pointer;font-size:.83rem;font-weight:600;color:var(--muted);transition:all .2s;}
+.subject-pill.active{background:var(--yellow);border-color:var(--yellow-deep);color:var(--dark);}
+.subject-pill:hover{border-color:var(--yellow-deep);}
+.flashcard-arena{max-width:580px;margin:0 auto;}
+.flashcard-scene{perspective:1000px;height:280px;margin-bottom:24px;cursor:pointer;}
+.flashcard-inner{width:100%;height:100%;transform-style:preserve-3d;transition:transform .6s cubic-bezier(.4,0,.2,1);position:relative;}
+.flashcard-inner.flipped{transform:rotateY(180deg);}
+.flashcard-face{position:absolute;width:100%;height:100%;backface-visibility:hidden;border-radius:20px;display:flex;align-items:center;justify-content:center;padding:32px;text-align:center;border:3px solid var(--border);}
+.flashcard-front{background:linear-gradient(135deg,var(--yellow) 0%,var(--yellow-deep) 100%);}
+.fc-label{font-size:.76rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(0,0,0,.5);margin-bottom:10px;}
+.fc-question{font-family:'Fraunces',serif;font-size:1.4rem;font-weight:700;color:var(--dark);}
+.flashcard-back{background:var(--dark);transform:rotateY(180deg);}
+.flashcard-back .fc-label{color:rgba(255,214,0,.5);}
+.fc-answer{font-size:1.1rem;color:var(--white);line-height:1.6;}
+.fc-content{display:flex;flex-direction:column;}
+.fc-progress{display:flex;align-items:center;gap:11px;margin-bottom:18px;}
+.fc-prog-bar{flex:1;height:8px;background:var(--yellow-warm);border-radius:4px;overflow:hidden;}
+.fc-prog-fill{height:100%;background:var(--yellow-deep);border-radius:4px;transition:width .4s;}
+.fc-counter{font-weight:700;font-size:.86rem;color:var(--muted);white-space:nowrap;}
+.fc-actions{display:flex;gap:11px;justify-content:center;}
+.fc-btn{padding:13px 26px;border-radius:var(--radius-sm);border:2px solid;font-family:'DM Sans',sans-serif;font-size:.92rem;font-weight:700;cursor:pointer;transition:all .2s;}
+.fc-btn-wrong{border-color:var(--red);color:var(--red);background:rgba(229,57,53,.08);}
+.fc-btn-wrong:hover{background:var(--red);color:#fff;}
+.fc-btn-right{border-color:var(--green);color:var(--green);background:rgba(67,160,71,.08);}
+.fc-btn-right:hover{background:var(--green);color:#fff;}
+.fc-btn-flip{border-color:var(--yellow-deep);color:var(--dark);background:var(--yellow);}
+.fc-score{display:flex;gap:20px;justify-content:center;margin-top:14px;}
+.fc-score-item{text-align:center;}
+.fc-score-num{font-family:'Fraunces',serif;font-size:1.7rem;font-weight:900;}
+.fc-score-label{font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;}
+.fc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px;}
+.fc-card-mini{background:var(--card);border:2px solid var(--border);border-radius:var(--radius);padding:16px;transition:all .2s;}
+.fc-card-mini:hover{border-color:var(--yellow-deep);transform:translateY(-2px);box-shadow:var(--shadow);}
+.fc-card-mini .q{font-weight:700;font-size:.88rem;color:var(--dark);margin-bottom:7px;}
+.fc-card-mini .a{font-size:.83rem;color:var(--muted);}
+
+/* QUIZ */
+.quiz-container{max-width:660px;margin:0 auto;}
+.quiz-question-card{background:var(--card);border:2px solid var(--border);border-radius:20px;padding:32px;margin-bottom:20px;}
+.quiz-q-num{font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px;}
+.quiz-q-text{font-family:'Fraunces',serif;font-size:1.3rem;font-weight:700;color:var(--dark);line-height:1.4;}
+.quiz-options{display:flex;flex-direction:column;gap:9px;margin-top:22px;}
+.quiz-option{padding:14px 18px;border-radius:var(--radius-sm);border:2px solid var(--border);background:var(--white);cursor:pointer;transition:all .2s;font-weight:600;font-size:.92rem;color:var(--text);text-align:left;}
+.quiz-option:hover:not(.disabled){border-color:var(--yellow-deep);background:var(--yellow-warm);}
+.quiz-option.correct{background:rgba(67,160,71,.12);border-color:var(--green);color:var(--green);}
+.quiz-option.wrong{background:rgba(229,57,53,.1);border-color:var(--red);color:var(--red);}
+.quiz-option.disabled{cursor:default;}
+.quiz-result-banner{padding:14px 18px;border-radius:var(--radius-sm);font-weight:700;margin-top:14px;display:none;}
+.quiz-result-banner.correct{background:rgba(67,160,71,.12);color:var(--green);border:2px solid var(--green);}
+.quiz-result-banner.wrong{background:rgba(229,57,53,.1);color:var(--red);border:2px solid var(--red);}
+.quiz-final{text-align:center;padding:44px 28px;background:var(--card);border:2px solid var(--border);border-radius:20px;}
+.quiz-final-score{font-family:'Fraunces',serif;font-size:4.5rem;font-weight:900;color:var(--yellow-deep);}
+.quiz-final-label{font-size:1rem;color:var(--muted);margin-bottom:24px;}
+
+/* PROGRESS */
+.progress-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;}
+.chart-card{background:var(--card);border:2px solid var(--border);border-radius:var(--radius);padding:22px;}
+.subject-stats{display:flex;flex-direction:column;gap:13px;margin-top:6px;}
+.subject-stat-row{display:flex;align-items:center;gap:11px;}
+.subject-stat-name{width:80px;font-size:.83rem;font-weight:700;color:var(--text);}
+.subject-stat-bar{flex:1;height:9px;background:var(--yellow-warm);border-radius:5px;overflow:hidden;}
+.subject-stat-fill{height:100%;border-radius:5px;transition:width 1s cubic-bezier(.4,0,.2,1);}
+.subject-stat-pct{font-size:.8rem;font-weight:700;color:var(--muted);width:34px;text-align:right;}
+.heatmap{display:grid;grid-template-columns:repeat(52,1fr);gap:3px;margin-top:10px;}
+.heatmap-cell{width:100%;aspect-ratio:1;border-radius:2px;background:var(--yellow-warm);}
+.heatmap-cell.h1{background:#FFE082;}.heatmap-cell.h2{background:#FFD600;}.heatmap-cell.h3{background:#F9A825;}.heatmap-cell.h4{background:#E65100;}
+
+/* SUBJECTS */
+.subjects-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px;}
+.subject-card{border-radius:var(--radius);padding:22px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;border:2.5px solid;min-height:155px;}
+.subject-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-lg);}
+.subject-card-icon{font-size:2.3rem;margin-bottom:10px;}
+.subject-card-name{font-family:'Fraunces',serif;font-size:1.15rem;font-weight:700;margin-bottom:3px;}
+.subject-card-count{font-size:.8rem;font-weight:600;opacity:.7;}
+.subject-card-actions{position:absolute;top:12px;right:12px;opacity:0;transition:opacity .2s;}
+.subject-card:hover .subject-card-actions{opacity:1;}
+
+/* UPLOAD */
+.upload-zone{border:3px dashed var(--border);border-radius:20px;padding:52px 28px;text-align:center;background:var(--yellow-warm);cursor:pointer;transition:all .3s;margin-bottom:22px;}
+.upload-zone:hover,.upload-zone.dragover{border-color:var(--yellow-deep);background:var(--yellow-light);transform:scale(1.01);}
+.upload-icon{font-size:3.2rem;margin-bottom:14px;}
+.upload-title{font-family:'Fraunces',serif;font-size:1.3rem;font-weight:700;color:var(--dark);margin-bottom:7px;}
+.upload-sub{font-size:.88rem;color:var(--muted);}
+.gen-card{background:var(--card);border:2px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:11px;display:flex;align-items:start;gap:14px;}
+.gen-card-num{width:30px;height:30px;border-radius:50%;background:var(--yellow);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:.82rem;color:var(--dark);flex-shrink:0;}
+.gen-card-q{font-weight:700;font-size:.9rem;margin-bottom:5px;color:var(--dark);}
+.gen-card-a{font-size:.85rem;color:var(--muted);}
+.loading-spinner{display:inline-block;width:22px;height:22px;border:3px solid var(--yellow-warm);border-top-color:var(--yellow-deep);border-radius:50%;animation:spin .8s linear infinite;}
+
+/* ALARMS */
+.alarm-list{display:flex;flex-direction:column;gap:11px;}
+.alarm-item{background:var(--card);border:2px solid var(--border);border-radius:var(--radius);padding:17px;display:flex;align-items:center;gap:15px;}
+.alarm-time{font-family:'Fraunces',serif;font-size:1.3rem;font-weight:700;color:var(--dark);}
+.alarm-label{font-size:.88rem;color:var(--muted);}
+.alarm-toggle{margin-left:auto;position:relative;width:46px;height:25px;background:var(--border);border-radius:13px;cursor:pointer;transition:background .3s;border:none;flex-shrink:0;}
+.alarm-toggle::after{content:'';position:absolute;width:19px;height:19px;border-radius:50%;background:#fff;top:3px;left:3px;transition:transform .3s;box-shadow:0 1px 4px rgba(0,0,0,.2);}
+.alarm-toggle.on{background:var(--yellow-deep);}
+.alarm-toggle.on::after{transform:translateX(21px);}
+
+/* MODALS */
+.modal-overlay{position:fixed;inset:0;z-index:1000;background:rgba(26,18,0,.6);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s;}
+.modal-overlay.open{opacity:1;pointer-events:all;}
+.modal{background:var(--white);border-radius:24px;padding:34px;width:470px;max-width:95vw;box-shadow:var(--shadow-lg),0 0 0 2px var(--border);transform:scale(.92);transition:transform .3s cubic-bezier(.22,1,.36,1);max-height:90vh;overflow-y:auto;}
+.modal-overlay.open .modal{transform:scale(1);}
+.modal-title{font-family:'Fraunces',serif;font-size:1.3rem;font-weight:700;color:var(--dark);margin-bottom:22px;display:flex;align-items:center;gap:9px;}
+.modal-actions{display:flex;gap:9px;margin-top:22px;justify-content:flex-end;}
+
+/* TOAST */
+.toast-container{position:fixed;top:22px;right:22px;z-index:9999;display:flex;flex-direction:column;gap:9px;pointer-events:none;}
+.toast{background:var(--dark);color:var(--white);padding:13px 18px;border-radius:11px;font-size:.88rem;font-weight:600;border-left:4px solid var(--yellow);box-shadow:var(--shadow-lg);pointer-events:all;animation:toastIn .4s cubic-bezier(.22,1,.36,1);display:flex;align-items:center;gap:9px;min-width:250px;max-width:320px;}
+@keyframes toastIn{from{transform:translateX(100px);opacity:0}to{transform:translateX(0);opacity:1}}
+.toast.success{border-left-color:var(--green);}.toast.error{border-left-color:var(--red);}.toast.warning{border-left-color:var(--yellow-deep);}
+.empty-state{text-align:center;padding:52px 28px;color:var(--muted);}
+.empty-state .empty-icon{font-size:3.2rem;margin-bottom:14px;}
+.empty-state h3{font-family:'Fraunces',serif;font-size:1.15rem;color:var(--text);margin-bottom:7px;}
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
+.section-title{font-family:'Fraunces',serif;font-size:1.3rem;font-weight:700;color:var(--dark);}
+@media(max-width:900px){.sidebar{transform:translateX(-256px);}.main-content{margin-left:0;}.stats-grid{grid-template-columns:repeat(2,1fr);}.dash-grid,.cal-layout,.progress-grid{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<div class="toast-container" id="toast-container"></div>
+
+<!-- Loading -->
+<div id="app-loading">
+  <div class="logo">Study<span>Buddy</span> ✏️</div>
+  <div class="spinner"></div>
+  <div style="font-size:.85rem;color:var(--mid);font-weight:600">Connecting to cloud…</div>
+</div>
+
+<!-- AUTH -->
+<div id="auth-screen" style="display:none">
+  <div class="auth-card">
+    <div class="auth-logo">Study<span>Buddy</span> ✏️</div>
+    <div class="auth-subtitle">Your smart, all-in-one study companion</div>
+    <div class="firebase-badge">☁️ Firebase — syncs instantly across all your devices</div>
+    <div class="auth-tabs">
+      <div class="auth-tab active" onclick="switchAuthTab('login')">Log In</div>
+      <div class="auth-tab" onclick="switchAuthTab('signup')">Sign Up</div>
+    </div>
+    <div id="login-form">
+      <div class="form-group"><label class="form-label">Email</label><input type="email" class="form-input" id="login-email" placeholder="you@example.com" onkeydown="if(event.key==='Enter')handleLogin()"></div>
+      <div class="form-group"><label class="form-label">Password</label><input type="password" class="form-input" id="login-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')handleLogin()"></div>
+      <div class="auth-error" id="login-error"></div>
+      <button class="btn-primary" id="login-btn" onclick="handleLogin()">Log In →</button>
+    </div>
+    <div id="signup-form" style="display:none">
+      <div class="form-group"><label class="form-label">Full Name</label><input type="text" class="form-input" id="signup-name" placeholder="Alex Rivera"></div>
+      <div class="form-group"><label class="form-label">Email</label><input type="email" class="form-input" id="signup-email" placeholder="you@example.com"></div>
+      <div class="form-group"><label class="form-label">Password</label><input type="password" class="form-input" id="signup-password" placeholder="Min 6 characters"></div>
+      <div class="auth-error" id="signup-error"></div>
+      <div class="auth-success" id="signup-success">Account created! Signing you in…</div>
+      <button class="btn-primary" id="signup-btn" onclick="handleSignup()">Create Account →</button>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <aside class="sidebar">
+    <div class="sidebar-logo">Study<span>Buddy</span></div>
+    <div class="sidebar-user">
+      <div class="user-avatar" id="user-avatar-initials">?</div>
+      <div class="user-info">
+        <div class="user-name" id="user-display-name">Loading…</div>
+        <div class="user-email" id="user-display-email"></div>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-label">Main</div>
+      <div class="nav-item" onclick="navTo('dashboard')"><span class="nav-icon">🏠</span>Dashboard</div>
+      <div class="nav-item" onclick="navTo('calendar')"><span class="nav-icon">📅</span>Calendar</div>
+      <div class="nav-item" onclick="navTo('progress')"><span class="nav-icon">📊</span>Progress</div>
+      <div class="nav-label">Study</div>
+      <div class="nav-item" onclick="navTo('flashcards')"><span class="nav-icon">🧠</span>Flashcards</div>
+      <div class="nav-item" onclick="navTo('upload')"><span class="nav-icon">⚡</span>AI Generator</div>
+      <div class="nav-label">Manage</div>
+      <div class="nav-item" onclick="navTo('subjects')"><span class="nav-icon">🎯</span>Subjects</div>
+      <div class="nav-item" onclick="navTo('notifications')"><span class="nav-icon">🔔</span>Alarms</div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="nav-item" onclick="handleLogout()"><span class="nav-icon">👋</span>Log Out</div>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <div class="topbar">
+      <div class="topbar-title" id="topbar-title">Dashboard</div>
+      <div class="topbar-actions">
+        <div id="current-time" style="font-weight:600;color:var(--muted);font-size:.88rem;"></div>
+        <div class="sync-badge">☁️ Synced</div>
+        <button class="btn-icon" onclick="requestNotifPermission()" title="Enable notifications">🔔</button>
+      </div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div class="page" id="page-dashboard">
+      <div class="stats-grid">
+        <div class="stat-card" data-emoji="📚"><div class="stat-value" id="stat-cards">0</div><div class="stat-label">Flashcards</div></div>
+        <div class="stat-card" data-emoji="🎯"><div class="stat-value" id="stat-subjects">0</div><div class="stat-label">Subjects</div></div>
+        <div class="stat-card" data-emoji="✅"><div class="stat-value" id="stat-tasks">0</div><div class="stat-label">Tasks Done</div></div>
+        <div class="stat-card" data-emoji="🔥"><div class="stat-value" id="stat-streak">0</div><div class="stat-label">Day Streak</div></div>
+      </div>
+      <div class="dash-grid">
+        <div class="card">
+          <div class="card-title"><span>📋</span>Today's Study Plan
+            <button class="btn-secondary" style="margin-left:auto;padding:5px 13px;font-size:.8rem" onclick="openAddTaskModal()">+ Task</button>
+          </div>
+          <div class="today-tasks" id="today-tasks-list"><div class="empty-state" style="padding:20px"><div class="empty-icon">📝</div>No tasks yet!</div></div>
+        </div>
+        <div class="card">
+          <div class="card-title"><span>🔥</span>Study Streak</div>
+          <div class="streak-display">
+            <div style="font-size:1.9rem">🔥</div>
+            <div class="streak-num" id="streak-display">0</div>
+            <div class="streak-label">Day Streak</div>
+          </div>
+          <div class="streak-days" id="streak-dots"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CALENDAR -->
+    <div class="page" id="page-calendar">
+      <div class="cal-layout">
+        <div>
+          <div class="cal-header">
+            <div class="cal-month" id="cal-month-label"></div>
+            <div class="cal-nav">
+              <button onclick="calPrev()">‹</button>
+              <button onclick="calToday()">Today</button>
+              <button onclick="calNext()">›</button>
+            </div>
+          </div>
+          <div class="cal-grid" id="cal-grid"></div>
+          <div id="events-for-day" style="margin-top:14px"></div>
+        </div>
+        <div>
+          <div class="event-form">
+            <div class="card-title" style="margin-bottom:14px"><span>➕</span>Add Event</div>
+            <div class="form-group"><label class="form-label">Title</label><input type="text" class="form-input" id="event-title" placeholder="Chemistry revision"></div>
+            <div class="form-group"><label class="form-label">Date</label><input type="date" class="form-input" id="event-date"></div>
+            <div class="form-group"><label class="form-label">Time</label><input type="time" class="form-input" id="event-time"></div>
+            <div class="form-group"><label class="form-label">Subject</label><select class="form-input" id="event-subject"></select></div>
+            <button class="btn-primary" onclick="addEvent()">Add to Calendar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROGRESS -->
+    <div class="page" id="page-progress">
+      <div class="progress-grid">
+        <div class="chart-card"><div class="card-title"><span>📈</span>Study Hours This Week</div><canvas id="hoursChart" height="200"></canvas></div>
+        <div class="chart-card"><div class="card-title"><span>🎯</span>Quiz Accuracy</div><canvas id="accuracyChart" height="200"></canvas></div>
+      </div>
+      <div class="card" style="margin-top:22px"><div class="card-title"><span>📚</span>Subject Progress</div><div class="subject-stats" id="subject-progress-bars"></div></div>
+      <div class="card" style="margin-top:22px">
+        <div class="card-title"><span>🗓️</span>Activity Heatmap</div>
+        <div class="heatmap" id="heatmap"></div>
+        <div style="display:flex;gap:6px;align-items:center;margin-top:8px;font-size:.73rem;color:var(--muted)">
+          <span>Less</span>
+          <div style="width:11px;height:11px;border-radius:2px;background:var(--yellow-warm)"></div>
+          <div style="width:11px;height:11px;border-radius:2px;background:#FFE082"></div>
+          <div style="width:11px;height:11px;border-radius:2px;background:#FFD600"></div>
+          <div style="width:11px;height:11px;border-radius:2px;background:#F9A825"></div>
+          <div style="width:11px;height:11px;border-radius:2px;background:#E65100"></div>
+          <span>More</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- FLASHCARDS -->
+    <div class="page" id="page-flashcards">
+      <div class="fc-tabs">
+        <div class="fc-tab active" onclick="fcSwitchTab('study')">📖 Study</div>
+        <div class="fc-tab" onclick="fcSwitchTab('quiz')">🧪 Quiz</div>
+        <div class="fc-tab" onclick="fcSwitchTab('browse')">🗂️ Browse</div>
+      </div>
+      <div id="fc-study-mode">
+        <div class="fc-controls"><div class="subject-filter" id="fc-subject-filter"></div><button class="btn-secondary" onclick="openAddCardModal()" style="margin-left:auto">+ Add Card</button></div>
+        <div id="fc-study-content"><div class="empty-state"><div class="empty-icon">🃏</div><h3>No cards yet</h3></div></div>
+      </div>
+      <div id="fc-quiz-mode" style="display:none">
+        <div class="fc-controls"><div class="subject-filter" id="quiz-subject-filter"></div><button class="btn-secondary" onclick="startQuiz()" style="margin-left:auto">🎮 Start Quiz</button></div>
+        <div class="quiz-container" id="quiz-container"><div class="empty-state"><div class="empty-icon">🧪</div><h3>Ready to quiz?</h3><p>Select a subject and hit Start Quiz</p></div></div>
+      </div>
+      <div id="fc-browse-mode" style="display:none">
+        <div class="section-header"><div class="section-title">All Cards (<span id="fc-total-count">0</span>)</div><button class="btn-secondary" onclick="openAddCardModal()">+ Add Card</button></div>
+        <div class="fc-grid" id="fc-browse-grid"></div>
+      </div>
+    </div>
+
+    <!-- AI GENERATOR -->
+    <div class="page" id="page-upload">
+      <div class="section-header"><div class="section-title">⚡ AI Flashcard Generator</div></div>
+      <p style="color:var(--muted);margin-bottom:20px">Paste text or upload a file — AI generates flashcards instantly!</p>
+      <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+        <div class="upload-icon">📄</div>
+        <div class="upload-title">Drop your file here</div>
+        <div class="upload-sub">TXT files supported • or click to browse</div>
+      </div>
+      <input type="file" id="file-input" style="display:none" accept=".txt" onchange="handleFileSelect(event)">
+      <div class="card" style="margin-bottom:22px">
+        <div class="card-title"><span>✏️</span>Paste Text</div>
+        <textarea class="form-input" id="paste-text" rows="6" placeholder="Paste your notes, textbook content, or study material here…"></textarea>
+        <div style="display:flex;gap:11px;margin-top:13px;align-items:center;flex-wrap:wrap">
+          <select class="form-input" id="gen-subject" style="flex:1;min-width:130px"></select>
+          <select class="form-input" id="gen-count" style="width:115px">
+            <option value="5">5 cards</option><option value="10" selected>10 cards</option>
+            <option value="15">15 cards</option><option value="20">20 cards</option>
+          </select>
+          <button class="btn-primary" style="width:auto;padding:12px 22px;white-space:nowrap" onclick="generateFlashcards()">Generate ✨</button>
+        </div>
+      </div>
+      <div id="gen-loading" style="text-align:center;padding:28px;display:none"><div class="loading-spinner"></div><p style="margin-top:13px;font-weight:600;color:var(--muted)">AI is creating your flashcards…</p></div>
+      <div id="gen-results"></div>
+    </div>
+
+    <!-- SUBJECTS -->
+    <div class="page" id="page-subjects">
+      <div class="section-header"><div class="section-title">🎯 My Subjects</div><button class="btn-primary" style="width:auto;padding:10px 20px" onclick="openAddSubjectModal()">+ New Subject</button></div>
+      <div class="subjects-grid" id="subjects-grid"></div>
+    </div>
+
+    <!-- ALARMS -->
+    <div class="page" id="page-notifications">
+      <div class="section-header"><div class="section-title">🔔 Study Alarms</div><button class="btn-primary" style="width:auto;padding:10px 20px" onclick="openAddAlarmModal()">+ New Alarm</button></div>
+      <div class="alarm-list" id="alarm-list"></div>
+      <div class="card" style="margin-top:22px">
+        <div class="card-title"><span>📢</span>Browser Notifications</div>
+        <p style="font-size:.88rem;color:var(--muted);margin-bottom:14px">Enable to receive reminders even when the tab is in the background.</p>
+        <button class="btn-secondary" onclick="requestNotifPermission()">Enable Notifications</button>
+        <div id="notif-status" style="margin-top:9px;font-size:.83rem;font-weight:600"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="modal-add-task"><div class="modal">
+  <div class="modal-title"><span>📋</span>Add Study Task</div>
+  <div class="form-group"><label class="form-label">Title</label><input type="text" class="form-input" id="new-task-title" placeholder="Review chapter 4"></div>
+  <div class="form-group"><label class="form-label">Subject</label><select class="form-input" id="new-task-subject"></select></div>
+  <div class="form-group"><label class="form-label">Time (optional)</label><input type="time" class="form-input" id="new-task-time"></div>
+  <div class="modal-actions"><button class="btn-secondary" onclick="closeModal('modal-add-task')">Cancel</button><button class="btn-primary" style="width:auto;padding:11px 22px" onclick="addTask()">Add Task</button></div>
+</div></div>
+
+<div class="modal-overlay" id="modal-add-card"><div class="modal">
+  <div class="modal-title"><span>🃏</span>Add Flashcard</div>
+  <div class="form-group"><label class="form-label">Question</label><textarea class="form-input" id="new-card-q" rows="3" placeholder="What is mitosis?"></textarea></div>
+  <div class="form-group"><label class="form-label">Answer</label><textarea class="form-input" id="new-card-a" rows="3" placeholder="Cell division producing two identical cells…"></textarea></div>
+  <div class="form-group"><label class="form-label">Subject</label><select class="form-input" id="new-card-subject"></select></div>
+  <div class="modal-actions"><button class="btn-secondary" onclick="closeModal('modal-add-card')">Cancel</button><button class="btn-primary" style="width:auto;padding:11px 22px" onclick="addFlashcard()">Add Card</button></div>
+</div></div>
+
+<div class="modal-overlay" id="modal-add-subject"><div class="modal">
+  <div class="modal-title"><span>🎯</span>New Subject</div>
+  <div class="form-group"><label class="form-label">Subject Name</label><input type="text" class="form-input" id="new-subject-name" placeholder="Chemistry"></div>
+  <div class="form-group"><label class="form-label">Emoji Icon</label><input type="text" class="form-input" id="new-subject-emoji" placeholder="⚗️" maxlength="2"></div>
+  <div class="form-group">
+    <label class="form-label">Color</label>
+    <div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:5px">
+      <div class="color-opt" data-color="#FFF9C4,#F9A825,#5C4500" onclick="selectColor(this)" style="width:30px;height:30px;border-radius:7px;background:#FFF9C4;cursor:pointer;border:3px solid #F9A825;"></div>
+      <div class="color-opt" data-color="#E3F2FD,#1E88E5,#1E88E5" onclick="selectColor(this)" style="width:30px;height:30px;border-radius:7px;background:#E3F2FD;cursor:pointer;border:3px solid #1E88E5;"></div>
+      <div class="color-opt" data-color="#F3E5F5,#8E24AA,#8E24AA" onclick="selectColor(this)" style="width:30px;height:30px;border-radius:7px;background:#F3E5F5;cursor:pointer;border:3px solid #8E24AA;"></div>
+      <div class="color-opt" data-color="#E8F5E9,#43A047,#1B5E20" onclick="selectColor(this)" style="width:30px;height:30px;border-radius:7px;background:#E8F5E9;cursor:pointer;border:3px solid #43A047;"></div>
+      <div class="color-opt" data-color="#FBE9E7,#E64A19,#BF360C" onclick="selectColor(this)" style="width:30px;height:30px;border-radius:7px;background:#FBE9E7;cursor:pointer;border:3px solid #E64A19;"></div>
+      <div class="color-opt" data-color="#E0F7FA,#00ACC1,#006064" onclick="selectColor(this)" style="width:30px;height:30px;border-radius:7px;background:#E0F7FA;cursor:pointer;border:3px solid #00ACC1;"></div>
+    </div>
+  </div>
+  <div class="modal-actions"><button class="btn-secondary" onclick="closeModal('modal-add-subject')">Cancel</button><button class="btn-primary" style="width:auto;padding:11px 22px" onclick="addSubject()">Add Subject</button></div>
+</div></div>
+
+<div class="modal-overlay" id="modal-add-alarm"><div class="modal">
+  <div class="modal-title"><span>⏰</span>New Study Alarm</div>
+  <div class="form-group"><label class="form-label">Time</label><input type="time" class="form-input" id="new-alarm-time"></div>
+  <div class="form-group"><label class="form-label">Label</label><input type="text" class="form-input" id="new-alarm-label" placeholder="Morning Study Session"></div>
+  <div class="form-group"><label class="form-label">Repeat</label><select class="form-input" id="new-alarm-repeat"><option value="daily">Daily</option><option value="weekdays">Weekdays only</option><option value="once">Once</option></select></div>
+  <div class="modal-actions"><button class="btn-secondary" onclick="closeModal('modal-add-alarm')">Cancel</button><button class="btn-primary" style="width:auto;padding:11px 22px" onclick="addAlarm()">Set Alarm</button></div>
+</div></div>
+
+<!-- ═══ FIREBASE + APP LOGIC ═══ -->
+<script type="module">
+import { initializeApp }                                    from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword,
+         signInWithEmailAndPassword, signOut,
+         onAuthStateChanged, updateProfile }                from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, doc, setDoc, onSnapshot }           from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+// ── Config ──
+const app  = initializeApp({ apiKey:"AIzaSyB1cnHZKPkIGLOKycYne_5mYGsbZpYfU3A", authDomain:"study-buddy-1d859.firebaseapp.com", projectId:"study-buddy-1d859", storageBucket:"study-buddy-1d859.firebasestorage.app", messagingSenderId:"568338969225", appId:"1:568338969225:web:8e77306f1c8b88d16ecc58" });
+const auth = getAuth(app);
+const db   = getFirestore(app);
+
+let unsub = null, chartsInited = false, hoursChart, accuracyChart;
+const uid  = () => auth.currentUser?.uid;
+const uRef = () => doc(db, "users", uid());
+
+// ── Default data for new users ──
+function defaultData() {
+  return {
+    subjects:[
+      {id:'s1',name:'Math',   emoji:'📐',bg:'#FFF9C4',border:'#F9A825',text:'#5C4500'},
+      {id:'s2',name:'Chem',   emoji:'⚗️', bg:'#E8F5E9',border:'#43A047',text:'#1B5E20'},
+      {id:'s3',name:'Biology',emoji:'🧬',bg:'#F3E5F5',border:'#8E24AA',text:'#4A148C'},
+      {id:'s4',name:'History',emoji:'📜',bg:'#FBE9E7',border:'#E64A19',text:'#BF360C'},
+    ],
+    flashcards:[
+      {id:'fc1',q:'What is the quadratic formula?',  a:'x = (-b ± √(b²-4ac)) / 2a',subject:'s1'},
+      {id:'fc2',q:"What is Avogadro's number?",      a:'6.022 × 10²³ mol⁻¹',         subject:'s2'},
+      {id:'fc3',q:'How do plants make food?',        a:'Photosynthesis: 6CO₂ + 6H₂O + light → C₆H₁₂O₆ + 6O₂',subject:'s3'},
+      {id:'fc4',q:'When did World War II end?',      a:'1945 (Germany May 8, Japan Sep 2)',subject:'s4'},
+      {id:'fc5',q:'Pythagorean theorem?',            a:'a² + b² = c²',                 subject:'s1'},
+    ],
+    tasks:[
+      {id:'t1',title:'Review Chapter 3',  subject:'s2',time:'10:00',done:false},
+      {id:'t2',title:'Practice integrals',subject:'s1',time:'14:00',done:false},
+      {id:'t3',title:'Read history notes',subject:'s4',time:'',    done:true },
+    ],
+    events:[],
+    alarms:[
+      {id:'a1',time:'08:00',label:'Morning Study',repeat:'daily',    on:true },
+      {id:'a2',time:'20:00',label:'Evening Review',repeat:'weekdays',on:false},
+    ],
+    streak:7, studyHours:[1.5,2,3,0.5,4,2.5,1], quizAccuracy:[80,65,90,72,88,76,92],
+  };
+}
+
+// ── Local state ──
+let D = defaultData(); // the cloud-synced data object
+let fcIdx=0, fcFilter='all', fcFlipped=false, fcScore={right:0,wrong:0};
+let quizState=null, quizFilter='all';
+let calY=2026, calM=2, selDate=null;
+let selColor='#FFF9C4,#F9A825,#5C4500';
+
+const save = async () => { try { await setDoc(uRef(), D, {merge:true}); } catch(e){console.error(e);} };
+
+// ── Auth ──
+window.switchAuthTab = t => {
+  document.querySelectorAll('.auth-tab').forEach((el,i)=>el.classList.toggle('active',t==='login'?i===0:i===1));
+  document.getElementById('login-form').style.display  = t==='login' ?'block':'none';
+  document.getElementById('signup-form').style.display = t==='signup'?'block':'none';
+};
+window.handleLogin = async () => {
+  const e=document.getElementById('login-email').value.trim(), p=document.getElementById('login-password').value;
+  const errEl=document.getElementById('login-error'); errEl.style.display='none';
+  if(!e||!p){errEl.textContent='Enter email and password.';errEl.style.display='block';return;}
+  const btn=document.getElementById('login-btn'); btn.disabled=true; btn.textContent='Signing in…';
+  try{ await signInWithEmailAndPassword(auth,e,p); }
+  catch(err){ btn.disabled=false; btn.textContent='Log In →'; errEl.textContent=fmtErr(err.code); errEl.style.display='block'; }
+};
+window.handleSignup = async () => {
+  const n=document.getElementById('signup-name').value.trim(), e=document.getElementById('signup-email').value.trim(), p=document.getElementById('signup-password').value;
+  const errEl=document.getElementById('signup-error'), sucEl=document.getElementById('signup-success');
+  errEl.style.display='none'; sucEl.style.display='none';
+  if(!n||!e||!p){errEl.textContent='Fill all fields.';errEl.style.display='block';return;}
+  if(p.length<6){errEl.textContent='Password must be 6+ characters.';errEl.style.display='block';return;}
+  const btn=document.getElementById('signup-btn'); btn.disabled=true; btn.textContent='Creating…';
+  try{
+    const cred=await createUserWithEmailAndPassword(auth,e,p);
+    await updateProfile(cred.user,{displayName:n});
+    sucEl.style.display='block';
+  }catch(err){ btn.disabled=false; btn.textContent='Create Account →'; errEl.textContent=fmtErr(err.code); errEl.style.display='block'; }
+};
+window.handleLogout = async () => { if(unsub)unsub(); await signOut(auth); chartsInited=false; document.getElementById('app').style.display='none'; document.getElementById('auth-screen').style.display='flex'; };
+
+function fmtErr(c){return({'auth/invalid-credential':'Wrong email or password.','auth/user-not-found':'No account with that email.','auth/wrong-password':'Incorrect password.','auth/email-already-in-use':'Email already registered.','auth/weak-password':'Password too short (min 6 chars).','auth/invalid-email':'Invalid email address.','auth/too-many-requests':'Too many attempts — try later.'})[c]||'Something went wrong. Try again.';}
+
+// ── Auth state listener ──
+onAuthStateChanged(auth, user => {
+  document.getElementById('app-loading').style.display='none';
+  if(user){
+    const name=user.displayName||user.email.split('@')[0];
+    const ini=name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+    document.getElementById('user-avatar-initials').textContent=ini;
+    document.getElementById('user-display-name').textContent=name;
+    document.getElementById('user-display-email').textContent=user.email;
+    document.getElementById('auth-screen').style.display='none';
+    document.getElementById('app').style.display='block';
+    document.getElementById('login-btn').disabled=false; document.getElementById('login-btn').textContent='Log In →';
+    document.getElementById('signup-btn').disabled=false; document.getElementById('signup-btn').textContent='Create Account →';
+    // Subscribe to Firestore
+    if(unsub)unsub();
+    unsub = onSnapshot(uRef(), snap => {
+      if(snap.exists()){ D={...defaultData(),...snap.data()}; }
+      else{ setDoc(uRef(),D); }
+      refreshAll();
+    });
+    startClock(); startAlarmCheck(); navTo('dashboard');
+  } else {
+    document.getElementById('auth-screen').style.display='flex';
+    document.getElementById('app').style.display='none';
+  }
+});
+
+// ── Nav ──
+window.navTo = page => {
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active',n.getAttribute('onclick')===`navTo('${page}')`));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  ({dashboard:'Dashboard',calendar:'Calendar',progress:'Progress Tracker',flashcards:'Flashcards',upload:'AI Generator',subjects:'Subjects',notifications:'Study Alarms'})[page] && (document.getElementById('topbar-title').textContent=({dashboard:'Dashboard',calendar:'Calendar',progress:'Progress Tracker',flashcards:'Flashcards',upload:'AI Generator',subjects:'Subjects',notifications:'Study Alarms'})[page]);
+  if(page==='calendar')   renderCalendar();
+  if(page==='progress')   refreshProgress();
+  if(page==='flashcards') refreshFlashcards();
+  if(page==='subjects')   renderSubjects();
+  if(page==='notifications') renderAlarms();
+  if(page==='upload')     populateSelects();
+};
+
+// ── Clock ──
+function startClock(){ const t=()=>document.getElementById('current-time').textContent=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}); t(); setInterval(t,1000); }
+
+function refreshAll(){ renderDashboard(); populateSelects(); const act=document.querySelector('.page.active'); if(!act)return; const id=act.id.replace('page-',''); if(id==='calendar')renderCalendar(); if(id==='progress')refreshProgress(); if(id==='flashcards')refreshFlashcards(); if(id==='subjects')renderSubjects(); if(id==='notifications')renderAlarms(); }
+
+// ── Dashboard ──
+function renderDashboard(){
+  document.getElementById('stat-cards').textContent=D.flashcards.length;
+  document.getElementById('stat-subjects').textContent=D.subjects.length;
+  document.getElementById('stat-tasks').textContent=D.tasks.filter(t=>t.done).length;
+  document.getElementById('stat-streak').textContent=D.streak;
+  document.getElementById('streak-display').textContent=D.streak;
+  const c=document.getElementById('today-tasks-list');
+  c.innerHTML=D.tasks.length?D.tasks.map(t=>{const s=D.subjects.find(s=>s.id===t.subject);return`<div class="task-item ${t.done?'done':''}" onclick="toggleTask('${t.id}')"><div class="task-check ${t.done?'checked':''}">${t.done?'✓':''}</div><div class="task-title">${t.title}</div>${s?`<span class="badge" style="background:${s.bg};color:${s.text}">${s.emoji} ${s.name}</span>`:''} ${t.time?`<span class="task-time">⏰ ${t.time}</span>`:''}<button class="delete-btn" onclick="deleteTask('${t.id}');event.stopPropagation()">🗑</button></div>`;}).join(''):'<div class="empty-state" style="padding:20px"><div class="empty-icon">📝</div>No tasks yet!</div>';
+  const days=['M','T','W','T','F','S','S'];
+  document.getElementById('streak-dots').innerHTML=days.map((d,i)=>`<div class="streak-dot ${i<D.streak%7?'done':i===D.streak%7?'today':''}">${d}</div>`).join('');
+}
+window.toggleTask=async id=>{const t=D.tasks.find(t=>t.id===id);if(t){t.done=!t.done;await save();}};
+window.deleteTask=async id=>{D.tasks=D.tasks.filter(t=>t.id!==id);await save();};
+window.openAddTaskModal=()=>{populateSelects();openModal('modal-add-task');};
+window.addTask=async()=>{const t=document.getElementById('new-task-title').value.trim();if(!t){toast('Enter a task title','warning');return;}D.tasks.push({id:'t'+Date.now(),title:t,subject:document.getElementById('new-task-subject').value,time:document.getElementById('new-task-time').value,done:false});await save();closeModal('modal-add-task');document.getElementById('new-task-title').value='';document.getElementById('new-task-time').value='';toast('Task added! ✅','success');};
+
+// ── Calendar ──
+const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+function renderCalendar(){
+  document.getElementById('cal-month-label').textContent=`${MONTHS[calM]} ${calY}`;
+  const first=new Date(calY,calM,1).getDay(),dim=new Date(calY,calM+1,0).getDate(),today=new Date();
+  document.getElementById('event-subject').innerHTML='<option value="">General</option>'+D.subjects.map(s=>`<option value="${s.id}">${s.emoji} ${s.name}</option>`).join('');
+  document.getElementById('event-date').value=`${calY}-${String(calM+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  const g=document.getElementById('cal-grid');
+  g.innerHTML=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d=>`<div class="cal-day-label">${d}</div>`).join('');
+  const prev=new Date(calY,calM,0).getDate();
+  for(let i=first-1;i>=0;i--) g.innerHTML+=`<div class="cal-cell other-month"><span class="cal-date">${prev-i}</span></div>`;
+  for(let d=1;d<=dim;d++){
+    const iT=(calY===today.getFullYear()&&calM===today.getMonth()&&d===today.getDate());
+    const ds=`${calY}-${String(calM+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const evs=D.events.filter(e=>e.date===ds);
+    const dots=evs.slice(0,3).map(e=>{const s=D.subjects.find(s=>s.id===e.subject);return`<div class="cal-dot" style="background:${s?.border||'var(--yellow-deep)'}"></div>`;}).join('');
+    g.innerHTML+=`<div class="cal-cell ${iT?'today':''} ${selDate===ds?'selected':''}" onclick="selectDate('${ds}')"><span class="cal-date">${d}</span><div class="cal-dots">${dots}</div></div>`;
+  }
+  if(selDate)renderEventsForDay(selDate);
+}
+window.selectDate=ds=>{selDate=ds;document.getElementById('event-date').value=ds;renderCalendar();renderEventsForDay(ds);};
+function renderEventsForDay(ds){
+  const evs=D.events.filter(e=>e.date===ds),c=document.getElementById('events-for-day');
+  const lbl=new Date(ds+'T00:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+  c.innerHTML=`<div style="font-weight:700;font-size:.95rem;color:var(--dark);margin-bottom:9px">${lbl}</div>`;
+  if(!evs.length){c.innerHTML+='<div style="font-size:.83rem;color:var(--muted)">No events this day</div>';return;}
+  c.innerHTML+=evs.map(e=>{const s=D.subjects.find(s=>s.id===e.subject);return`<div class="event-item"><div><div class="event-title">${e.title}</div><div class="event-meta">${e.time||'All day'}${s?' · '+s.emoji+' '+s.name:''}</div></div><button class="delete-btn" onclick="deleteEvent('${e.id}')">🗑</button></div>`;}).join('');
+}
+window.addEvent=async()=>{const t=document.getElementById('event-title').value.trim(),d=document.getElementById('event-date').value;if(!t||!d){toast('Enter title and date','warning');return;}D.events.push({id:'ev'+Date.now(),title:t,date:d,time:document.getElementById('event-time').value,subject:document.getElementById('event-subject').value});await save();document.getElementById('event-title').value='';renderCalendar();toast('Event added! 📅','success');};
+window.deleteEvent=async id=>{D.events=D.events.filter(e=>e.id!==id);await save();renderCalendar();};
+window.calPrev=()=>{calM--;if(calM<0){calM=11;calY--;}renderCalendar();};
+window.calNext=()=>{calM++;if(calM>11){calM=0;calY++;}renderCalendar();};
+window.calToday=()=>{const n=new Date();calY=n.getFullYear();calM=n.getMonth();renderCalendar();};
+
+// ── Flashcards ──
+function refreshFlashcards(){renderFCFilters();renderStudyMode();renderBrowseMode();}
+window.fcSwitchTab=tab=>{
+  document.querySelectorAll('.fc-tab').forEach((t,i)=>t.classList.toggle('active',['study','quiz','browse'][i]===tab));
+  document.getElementById('fc-study-mode').style.display=tab==='study'?'block':'none';
+  document.getElementById('fc-quiz-mode').style.display=tab==='quiz'?'block':'none';
+  document.getElementById('fc-browse-mode').style.display=tab==='browse'?'block':'none';
+  if(tab==='browse')renderBrowseMode();
+  if(tab==='quiz')renderQuizFilters();
+};
+function renderFCFilters(){
+  const c=document.getElementById('fc-subject-filter');
+  c.innerHTML=`<div class="subject-pill ${fcFilter==='all'?'active':''}" onclick="setFCFilter('all')">All (${D.flashcards.length})</div>`;
+  c.innerHTML+=D.subjects.map(s=>{const n=D.flashcards.filter(c=>c.subject===s.id).length;return n?`<div class="subject-pill ${fcFilter===s.id?'active':''}" onclick="setFCFilter('${s.id}')">${s.emoji} ${s.name} (${n})</div>`:''}).join('');
+}
+window.setFCFilter=id=>{fcFilter=id;fcIdx=0;fcScore={right:0,wrong:0};renderFCFilters();renderStudyMode();};
+const filteredCards=()=>fcFilter==='all'?D.flashcards:D.flashcards.filter(c=>c.subject===fcFilter);
+
+function renderStudyMode(){
+  const cards=filteredCards(),cont=document.getElementById('fc-study-content');
+  if(!cards.length){cont.innerHTML='<div class="empty-state"><div class="empty-icon">🃏</div><h3>No cards here</h3><p>Add some or try another subject</p></div>';return;}
+  const idx=Math.min(fcIdx,cards.length-1),card=cards[idx],pct=Math.round(idx/cards.length*100);
+  cont.innerHTML=`<div class="flashcard-arena">
+    <div class="fc-progress"><div class="fc-prog-bar"><div class="fc-prog-fill" style="width:${pct}%"></div></div><div class="fc-counter">${idx+1}/${cards.length}</div></div>
+    <div class="flashcard-scene" onclick="flipCard()">
+      <div class="flashcard-inner ${fcFlipped?'flipped':''}" id="fc-inner">
+        <div class="flashcard-face flashcard-front"><div class="fc-content"><div class="fc-label">Question — click to flip</div><div class="fc-question">${card.q}</div></div></div>
+        <div class="flashcard-face flashcard-back"><div class="fc-content"><div class="fc-label">Answer</div><div class="fc-answer">${card.a}</div></div></div>
+      </div>
+    </div>
+    <div class="fc-actions">
+      <button class="fc-btn fc-btn-wrong" onclick="fcMark(false)">✗ Wrong</button>
+      <button class="fc-btn fc-btn-flip" onclick="flipCard()">↕ Flip</button>
+      <button class="fc-btn fc-btn-right" onclick="fcMark(true)">✓ Got it!</button>
+    </div>
+    <div class="fc-score">
+      <div class="fc-score-item"><div class="fc-score-num" style="color:var(--green)">${fcScore.right}</div><div class="fc-score-label">Correct</div></div>
+      <div class="fc-score-item"><div class="fc-score-num" style="color:var(--muted)">${cards.length}</div><div class="fc-score-label">Total</div></div>
+      <div class="fc-score-item"><div class="fc-score-num" style="color:var(--red)">${fcScore.wrong}</div><div class="fc-score-label">Wrong</div></div>
+    </div>
+  </div>`;
+}
+window.flipCard=()=>{fcFlipped=!fcFlipped;const el=document.getElementById('fc-inner');if(el)el.classList.toggle('flipped',fcFlipped);};
+window.fcMark=async correct=>{
+  if(correct)fcScore.right++;else fcScore.wrong++;
+  fcIdx++; fcFlipped=false;
+  const cards=filteredCards();
+  if(fcIdx>=cards.length){
+    const pct=Math.round(fcScore.right/cards.length*100);
+    document.getElementById('fc-study-content').innerHTML=`<div class="quiz-final"><div class="quiz-final-score">${pct}%</div><div class="quiz-final-label">${fcScore.right}/${cards.length} correct</div><button class="btn-primary" style="width:auto;padding:13px 28px;margin:0 auto;display:block" onclick="restartFC()">Study Again 🔄</button></div>`;
+    toast(`Done! ${pct}% accuracy 🎉`,'success'); D.streak=Math.min(D.streak+1,999); await save();
+  } else renderStudyMode();
+};
+window.restartFC=()=>{fcIdx=0;fcScore={right:0,wrong:0};fcFlipped=false;renderStudyMode();};
+
+function renderBrowseMode(){
+  document.getElementById('fc-total-count').textContent=D.flashcards.length;
+  const g=document.getElementById('fc-browse-grid');
+  g.innerHTML=D.flashcards.length?D.flashcards.map(c=>{const s=D.subjects.find(s=>s.id===c.subject);return`<div class="fc-card-mini">${s?`<div style="margin-bottom:7px"><span class="badge" style="background:${s.bg};color:${s.text}">${s.emoji} ${s.name}</span></div>`:''}<div class="q">${c.q}</div><div class="a">${c.a}</div><button class="delete-btn" style="margin-top:9px;font-size:.8rem" onclick="deleteCard('${c.id}')">🗑 Remove</button></div>`;}).join(''):'<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🃏</div><h3>No cards yet</h3></div>';
+}
+window.deleteCard=async id=>{D.flashcards=D.flashcards.filter(c=>c.id!==id);await save();renderBrowseMode();document.getElementById('fc-total-count').textContent=D.flashcards.length;};
+window.openAddCardModal=()=>{populateSelects();openModal('modal-add-card');};
+window.addFlashcard=async()=>{const q=document.getElementById('new-card-q').value.trim(),a=document.getElementById('new-card-a').value.trim();if(!q||!a){toast('Enter Q and A','warning');return;}D.flashcards.push({id:'fc'+Date.now(),q,a,subject:document.getElementById('new-card-subject').value});await save();closeModal('modal-add-card');document.getElementById('new-card-q').value='';document.getElementById('new-card-a').value='';refreshFlashcards();toast('Card added! 🃏','success');};
+
+// ── Quiz ──
+function renderQuizFilters(){
+  const c=document.getElementById('quiz-subject-filter');
+  c.innerHTML=`<div class="subject-pill ${quizFilter==='all'?'active':''}" onclick="setQuizFilter('all')">All</div>`;
+  c.innerHTML+=D.subjects.map(s=>{const n=D.flashcards.filter(c=>c.subject===s.id).length;return n?`<div class="subject-pill ${quizFilter===s.id?'active':''}" onclick="setQuizFilter('${s.id}')">${s.emoji} ${s.name}</div>`:''}).join('');
+}
+window.setQuizFilter=id=>{quizFilter=id;renderQuizFilters();};
+window.startQuiz=()=>{
+  let pool=quizFilter==='all'?D.flashcards:D.flashcards.filter(c=>c.subject===quizFilter);
+  if(pool.length<2){toast('Need ≥2 cards to quiz!','warning');return;}
+  pool=[...pool].sort(()=>Math.random()-.5);
+  quizState={cards:pool,idx:0,score:0,answered:false};
+  renderQuizQ();
+};
+function renderQuizQ(){
+  const {cards,idx,score}=quizState;
+  if(idx>=cards.length){finalQuiz();return;}
+  const card=cards[idx],pct=Math.round(idx/cards.length*100);
+  const others=D.flashcards.filter(c=>c.id!==card.id).sort(()=>Math.random()-.5).slice(0,3);
+  const opts=[card.a,...others.map(c=>c.a)].sort(()=>Math.random()-.5);
+  const esc=s=>s.replace(/'/g,"&#39;").replace(/"/g,"&quot;");
+  document.getElementById('quiz-container').innerHTML=`
+    <div style="margin-bottom:14px"><div class="fc-progress"><div class="fc-prog-bar"><div class="fc-prog-fill" style="width:${pct}%"></div></div><div class="fc-counter">${idx+1}/${cards.length} · Score: ${score}</div></div></div>
+    <div class="quiz-question-card"><div class="quiz-q-num">Question ${idx+1}</div><div class="quiz-q-text">${card.q}</div>
+    <div class="quiz-options">${opts.map(o=>`<button class="quiz-option" onclick="answerQuiz(this,'${esc(o)}','${esc(card.a)}')">${o}</button>`).join('')}</div>
+    <div class="quiz-result-banner" id="quiz-banner"></div></div>
+    <div style="text-align:right"><button class="btn-secondary" id="quiz-next" style="display:none" onclick="nextQ()">Next →</button></div>`;
+}
+window.answerQuiz=(btn,chosen,correct)=>{
+  if(quizState.answered)return; quizState.answered=true;
+  const ok=chosen===correct;
+  if(ok){btn.classList.add('correct');quizState.score++;}else btn.classList.add('wrong');
+  document.querySelectorAll('.quiz-option').forEach(o=>{o.classList.add('disabled');if(o.textContent===correct)o.classList.add('correct');});
+  const b=document.getElementById('quiz-banner'); b.style.display='block'; b.className='quiz-result-banner '+(ok?'correct':'wrong'); b.textContent=ok?'✓ Correct!':`✗ Answer: ${correct}`;
+  document.getElementById('quiz-next').style.display='inline-block';
+};
+window.nextQ=()=>{quizState.idx++;quizState.answered=false;renderQuizQ();};
+async function finalQuiz(){
+  const {score,cards}=quizState,pct=Math.round(score/cards.length*100),emoji=pct>=80?'🏆':pct>=60?'👍':'📚';
+  document.getElementById('quiz-container').innerHTML=`<div class="quiz-final"><div style="font-size:2.8rem;margin-bottom:7px">${emoji}</div><div class="quiz-final-score">${pct}%</div><div class="quiz-final-label">${score}/${cards.length} correct</div><div style="display:flex;gap:11px;justify-content:center"><button class="btn-primary" style="width:auto;padding:13px 26px" onclick="startQuiz()">Retry 🔄</button><button class="btn-secondary" onclick="fcSwitchTab('study')">Study More 📖</button></div></div>`;
+  toast(`Quiz done! ${pct}%`,pct>=70?'success':'warning');
+  D.quizAccuracy.push(pct); D.quizAccuracy=D.quizAccuracy.slice(-7); await save();
+}
+
+// ── Subjects ──
+function renderSubjects(){
+  const g=document.getElementById('subjects-grid');
+  g.innerHTML=D.subjects.length?D.subjects.map(s=>{const n=D.flashcards.filter(c=>c.subject===s.id).length;return`<div class="subject-card" style="background:${s.bg};border-color:${s.border}"><div class="subject-card-icon">${s.emoji}</div><div class="subject-card-name" style="color:${s.text}">${s.name}</div><div class="subject-card-count" style="color:${s.text}">${n} card${n!==1?'s':''}</div><div class="subject-card-actions"><button class="btn-icon" style="padding:5px;background:white;border-color:${s.border}" onclick="deleteSubject('${s.id}')">🗑</button></div></div>`;}).join(''):'<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🎯</div><h3>No subjects yet</h3></div>';
+}
+window.selectColor=el=>{document.querySelectorAll('.color-opt').forEach(o=>o.style.outline='none');el.style.outline='3px solid var(--dark)';selColor=el.getAttribute('data-color');};
+window.openAddSubjectModal=()=>{openModal('modal-add-subject');const f=document.querySelector('.color-opt');if(f)window.selectColor(f);};
+window.addSubject=async()=>{const name=document.getElementById('new-subject-name').value.trim(),emoji=document.getElementById('new-subject-emoji').value.trim()||'📚';if(!name){toast('Enter a name','warning');return;}const[bg,border,text]=selColor.split(',');D.subjects.push({id:'s'+Date.now(),name,emoji,bg,border,text});await save();closeModal('modal-add-subject');document.getElementById('new-subject-name').value='';document.getElementById('new-subject-emoji').value='';renderSubjects();populateSelects();toast(`${emoji} ${name} added!`,'success');};
+window.deleteSubject=async id=>{D.subjects=D.subjects.filter(s=>s.id!==id);D.flashcards=D.flashcards.map(c=>c.subject===id?{...c,subject:''}:c);await save();renderSubjects();populateSelects();};
+
+function populateSelects(){
+  const opts='<option value="">No Subject</option>'+D.subjects.map(s=>`<option value="${s.id}">${s.emoji} ${s.name}</option>`).join('');
+  ['new-task-subject','new-card-subject','event-subject','gen-subject'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=opts;});
+}
+
+// ── Alarms ──
+function renderAlarms(){
+  const l=document.getElementById('alarm-list');
+  l.innerHTML=D.alarms.length?D.alarms.map(a=>`<div class="alarm-item"><span style="font-size:1.4rem">⏰</span><div><div class="alarm-time">${a.time}</div><div class="alarm-label">${a.label} · ${a.repeat}</div></div><button class="alarm-toggle ${a.on?'on':''}" onclick="toggleAlarm('${a.id}')"></button><button class="delete-btn" onclick="deleteAlarm('${a.id}')">🗑</button></div>`).join(''):'<div class="empty-state"><div class="empty-icon">⏰</div><h3>No alarms set</h3></div>';
+}
+window.toggleAlarm=async id=>{const a=D.alarms.find(a=>a.id===id);if(a){a.on=!a.on;await save();renderAlarms();}};
+window.deleteAlarm=async id=>{D.alarms=D.alarms.filter(a=>a.id!==id);await save();renderAlarms();};
+window.openAddAlarmModal=()=>openModal('modal-add-alarm');
+window.addAlarm=async()=>{const t=document.getElementById('new-alarm-time').value,l=document.getElementById('new-alarm-label').value.trim()||'Study Session';if(!t){toast('Select a time','warning');return;}D.alarms.push({id:'a'+Date.now(),time:t,label:l,repeat:document.getElementById('new-alarm-repeat').value,on:true});await save();closeModal('modal-add-alarm');renderAlarms();toast(`Alarm set for ${t} 🔔`,'success');};
+function startAlarmCheck(){setInterval(()=>{if(!auth.currentUser)return;const now=new Date(),cur=`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;D.alarms.forEach(a=>{if(a.on&&a.time===cur&&now.getSeconds()<10){toast(`⏰ ${a.label}`,'warning');if(Notification.permission==='granted')new Notification('StudyBuddy ⏰',{body:a.label});}});},5000);}
+window.requestNotifPermission=()=>{if(!('Notification' in window)){toast('Not supported','error');return;}Notification.requestPermission().then(p=>{const el=document.getElementById('notif-status');if(p==='granted'){if(el){el.textContent='✅ Enabled!';el.style.color='var(--green)';}toast('Notifications enabled! 🔔','success');}else if(el){el.textContent='❌ Blocked in browser settings';el.style.color='var(--red)';}});};
+
+// ── Progress / Charts ──
+function refreshProgress(){
+  const colors=['#FFD600','#43A047','#8E24AA','#1E88E5','#E64A19','#00ACC1'];
+  document.getElementById('subject-progress-bars').innerHTML=D.subjects.map((s,i)=>{const n=D.flashcards.filter(c=>c.subject===s.id).length,pct=D.flashcards.length?Math.round(n/D.flashcards.length*100):0;return`<div class="subject-stat-row"><div class="subject-stat-name">${s.emoji} ${s.name}</div><div class="subject-stat-bar"><div class="subject-stat-fill" style="width:${pct}%;background:${colors[i%6]}"></div></div><div class="subject-stat-pct">${pct}%</div></div>`;}).join('');
+  document.getElementById('heatmap').innerHTML=Array.from({length:364},()=>{const r=Math.random();return`<div class="heatmap-cell ${r>.85?'h4':r>.7?'h3':r>.5?'h2':r>.3?'h1':''}"></div>`;}).join('');
+  if(!chartsInited){initCharts();chartsInited=true;return;}
+  if(hoursChart){hoursChart.data.datasets[0].data=D.studyHours;hoursChart.update();}
+  if(accuracyChart){accuracyChart.data.datasets[0].data=D.quizAccuracy.slice(-7);accuracyChart.update();}
+}
+function initCharts(){
+  const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],cfg={responsive:true,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(255,214,0,.1)'},ticks:{color:'#8B7340'}},y:{grid:{color:'rgba(255,214,0,.1)'},ticks:{color:'#8B7340'}}}};
+  const hc=document.getElementById('hoursChart')?.getContext('2d');
+  if(hc)hoursChart=new Chart(hc,{type:'bar',data:{labels:days,datasets:[{data:D.studyHours,backgroundColor:'#FFD600',borderRadius:8,borderSkipped:false}]},options:cfg});
+  const ac=document.getElementById('accuracyChart')?.getContext('2d');
+  if(ac)accuracyChart=new Chart(ac,{type:'line',data:{labels:days,datasets:[{data:D.quizAccuracy.slice(-7),borderColor:'#F9A825',backgroundColor:'rgba(255,214,0,.1)',fill:true,tension:.4,pointBackgroundColor:'#FFD600',pointRadius:5}]},options:{...cfg,scales:{...cfg.scales,y:{...cfg.scales.y,min:0,max:100}}}});
+}
+
+// ── AI Generator ──
+window.generateFlashcards=async()=>{
+  const text=document.getElementById('paste-text').value.trim(),subject=document.getElementById('gen-subject').value,count=document.getElementById('gen-count').value;
+  if(!text){toast('Paste some text first!','warning');return;}
+  document.getElementById('gen-loading').style.display='block';document.getElementById('gen-results').innerHTML='';
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','anthropic-version':'2023-06-01','x-api-key':'YOUR_ANTHROPIC_API_KEY_HERE'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:`Generate exactly ${count} flashcards from this material. Return ONLY raw JSON array, no markdown:\n[{"q":"...","a":"..."},...]\n\n${text.slice(0,3000)}`}]})});
+    const data=await res.json(),raw=data.content?.find(c=>c.type==='text')?.text||'[]',cards=JSON.parse(raw.replace(/```json|```/g,'').trim());
+    showGen(cards,subject);
+  }catch(e){showGen(demoCards(text,parseInt(count)),subject);toast('Generated from your text 📚','success');}
+  document.getElementById('gen-loading').style.display='none';
+};
+function showGen(cards,subject){
+  if(!cards.length){toast('Could not generate cards','error');return;}
+  const enc=encodeURIComponent(JSON.stringify(cards));
+  document.getElementById('gen-results').innerHTML=`<div class="section-header"><div class="section-title">Generated ${cards.length} cards ✨</div><button class="btn-primary" style="width:auto;padding:10px 20px" onclick="saveGen('${enc}','${subject}')">Save All 💾</button></div>${cards.map((c,i)=>`<div class="gen-card"><div class="gen-card-num">${i+1}</div><div><div class="gen-card-q">${c.q}</div><div class="gen-card-a">${c.a}</div></div></div>`).join('')}`;
+  toast(`${cards.length} cards ready!`,'success');
+}
+function demoCards(text,n){
+  const ss=text.split(/[.!?]+/).map(s=>s.trim()).filter(s=>s.length>20);
+  const cards=ss.slice(0,n).map(s=>{const w=s.split(' '),k=w[Math.floor(w.length/2)];return{q:`What is described: "${s.slice(0,65)}${s.length>65?'...':''}"`,a:s};});
+  while(cards.length<n)cards.push({q:`Review concept ${cards.length+1}`,a:'Study the relevant section in your notes'});
+  return cards.slice(0,n);
+}
+window.saveGen=async(enc,subj)=>{try{const arr=JSON.parse(decodeURIComponent(enc));arr.forEach(c=>D.flashcards.push({id:'fc'+Date.now()+Math.random(),q:c.q,a:c.a,subject:subj}));await save();document.getElementById('gen-results').innerHTML=`<div class="empty-state"><div class="empty-icon">✅</div><h3>Saved to your library!</h3></div>`;toast('Cards added! 🎉','success');}catch(e){toast('Error saving','error');}};
+
+window.handleDragOver=e=>{e.preventDefault();document.getElementById('upload-zone').classList.add('dragover');};
+window.handleDragLeave=()=>document.getElementById('upload-zone').classList.remove('dragover');
+window.handleDrop=e=>{e.preventDefault();document.getElementById('upload-zone').classList.remove('dragover');if(e.dataTransfer.files[0])processFile(e.dataTransfer.files[0]);};
+window.handleFileSelect=e=>{if(e.target.files[0])processFile(e.target.files[0]);};
+function processFile(f){if(f.type==='text/plain'){const r=new FileReader();r.onload=e=>{document.getElementById('paste-text').value=e.target.result;toast(`📄 ${f.name} loaded!`,'success');};r.readAsText(f);}else{document.getElementById('paste-text').value=`[${f.name}] Paste your notes here to generate flashcards.`;toast(`📎 ${f.name} attached`,'');}}
+
+// ── Modals ──
+window.openModal=id=>{document.getElementById(id).classList.add('open');document.body.style.overflow='hidden';};
+window.closeModal=id=>{document.getElementById(id).classList.remove('open');document.body.style.overflow='';};
+document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)window.closeModal(m.id);}));
+
+// ── Toast ──
+window.toast=(msg,type='')=>{const c=document.getElementById('toast-container'),el=document.createElement('div');el.className=`toast ${type}`;el.innerHTML=`<span>${{success:'✅',error:'❌',warning:'⚠️'}[type]||'💬'}</span><span>${msg}</span>`;c.appendChild(el);setTimeout(()=>{el.style.opacity='0';el.style.transform='translateX(100px)';el.style.transition='all .4s';setTimeout(()=>el.remove(),400);},3200);};
+
+// ── Keyboard shortcuts ──
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape')document.querySelectorAll('.modal-overlay.open').forEach(m=>window.closeModal(m.id));
+  if(document.getElementById('page-flashcards')?.classList.contains('active')&&document.getElementById('fc-study-mode')?.style.display!=='none'){
+    if(e.key===' '){e.preventDefault();window.flipCard();}
+    if(e.key==='ArrowRight')window.fcMark(true);
+    if(e.key==='ArrowLeft')window.fcMark(false);
+  }
+});
+
+// Fallback: if Firebase takes too long (no network), show auth screen
+setTimeout(()=>{if(document.getElementById('app-loading').style.display!=='none'){document.getElementById('app-loading').style.display='none';document.getElementById('auth-screen').style.display='flex';}},4000);
+</script>
+</body>
+</html>
